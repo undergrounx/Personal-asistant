@@ -186,11 +186,80 @@
     from{ opacity:0; transform:translateY(4px); }
     to{ opacity:1; transform:translateY(0); }
   }
+
+  /* ===== Gender gate ===== */
+  #genderGate{
+    position:absolute;
+    inset:0;
+    background:var(--paper);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:22px;
+    padding:32px;
+    text-align:center;
+    z-index:5;
+  }
+
+  #genderGate .gTitle{
+    font-size:19px;
+    font-weight:600;
+    letter-spacing:-0.01em;
+  }
+
+  #genderGate .gSub{
+    font-size:13px;
+    color:var(--muted);
+    max-width:280px;
+    line-height:1.5;
+  }
+
+  .gOptions{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    width:100%;
+    max-width:260px;
+  }
+
+  .gOption{
+    border:1px solid rgba(20,19,17,0.18);
+    background:#fff;
+    color:var(--ink);
+    padding:12px 16px;
+    border-radius:12px;
+    font-family:inherit;
+    font-size:15px;
+    cursor:pointer;
+    transition:border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .gOption:hover{
+    border-color:var(--accent);
+    background:var(--accent-soft);
+  }
+
+  .app{ position:relative; }
+  .app.gate-open #log,
+  .app.gate-open form{ visibility:hidden; }
 </style>
 </head>
 <body>
 
-  <div class="app">
+  <div class="app gate-open" id="appRoot">
+
+    <div id="genderGate">
+      <div class="eyebrow">Sebelum mulai</div>
+      <div class="gTitle">Boleh tau kamu siapa?</div>
+      <div class="gSub">Biar aku bisa nyapa dan jawab dengan lebih pas buat kamu.</div>
+      <div class="gOptions">
+        <button class="gOption" data-gender="Laki-laki">Laki-laki</button>
+        <button class="gOption" data-gender="Perempuan">Perempuan</button>
+        <button class="gOption" data-gender="Lainnya">Lainnya / gak mau sebutin</button>
+      </div>
+    </div>
+
     <header>
       <div class="eyebrow">Personal Assistant</div>
       <h1>Tanya Aja</h1>
@@ -207,13 +276,16 @@
 
 <script>
   // ====== KONFIGURASI — GANTI INI ======
- const WEBHOOK_URL = "https://n8n-07udadxgevay.jkt6.sumopod.my.id/webhook/tanya-aja";
+  const WEBHOOK_URL = "https://n8n-07udadxgevay.jkt6.sumopod.my.id/webhook/tanya-aja";
   // ======================================
+
   const log = document.getElementById("log");
   const form = document.getElementById("chatForm");
   const input = document.getElementById("input");
   const sendBtn = document.getElementById("sendBtn");
   const statusText = document.getElementById("statusText");
+  const appRoot = document.getElementById("appRoot");
+  const genderGate = document.getElementById("genderGate");
 
   // session id per browser, biar n8n bisa jaga histori percakapan per user
   function getSessionId(){
@@ -225,6 +297,27 @@
     return id;
   }
   const sessionId = getSessionId();
+
+  // gender pengunjung, ditanya sekali lalu disimpan per browser
+  let gender = localStorage.getItem("tanyaaja_gender");
+
+  function openChat(){
+    appRoot.classList.remove("gate-open");
+    genderGate.style.display = "none";
+    input.focus();
+  }
+
+  if(gender){
+    openChat();
+  }else{
+    document.querySelectorAll(".gOption").forEach(btn => {
+      btn.addEventListener("click", () => {
+        gender = btn.dataset.gender;
+        localStorage.setItem("tanyaaja_gender", gender);
+        openChat();
+      });
+    });
+  }
 
   function addBubble(text, who){
     const row = document.createElement("div");
@@ -273,7 +366,7 @@
       const res = await fetch(WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, message })
+        body: JSON.stringify({ sessionId, message, gender })
       });
 
       if(!res.ok){
