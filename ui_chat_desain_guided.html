@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Prompt Forge - Desain</title>
+<style>
+  :root{
+    --ink:#141311;
+    --paper:#f7f4ee;
+    --line:#2a2822;
+    --accent:#5b7a63;
+    --accent-soft:#e4ead9;
+    --muted:#8a8578;
+    --bubble-user:#141311;
+    --bubble-user-text:#f7f4ee;
+    --bubble-bot:#ffffff;
+    --bubble-bot-text:#141311;
+    --radius:14px;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family: "Iowan Old Style","Palatino Linotype", Georgia, serif;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+
+  .app{
+    width:100%;
+    max-width:560px;
+    height:min(720px, 92vh);
+    display:flex;
+    flex-direction:column;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:20px;
+    overflow:hidden;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+  }
+
+  header{
+    padding:20px 22px 16px;
+    border-bottom:1px solid rgba(20,19,17,0.1);
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+
+  .eyebrow{
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+  }
+
+  h1{ font-size:22px; font-weight:600; letter-spacing:-0.01em; }
+
+  .status{
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size:11px;
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-top:2px;
+  }
+
+  .dot{ width:6px;height:6px;border-radius:50%; background:var(--accent); flex-shrink:0; }
+
+  #log{
+    flex:1;
+    overflow-y:auto;
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  .row{ display:flex; }
+  .row.user{ justify-content:flex-end; }
+  .row.bot{ justify-content:flex-start; }
+
+  .bubble{
+    max-width:78%;
+    padding:11px 15px;
+    border-radius:var(--radius);
+    font-size:15px;
+    line-height:1.5;
+    white-space:pre-wrap;
+    word-wrap:break-word;
+  }
+
+  .row.user .bubble{
+    background:var(--bubble-user);
+    color:var(--bubble-user-text);
+    border-bottom-right-radius:4px;
+  }
+
+  .row.bot .bubble{
+    background:var(--bubble-bot);
+    color:var(--bubble-bot-text);
+    border:1px solid rgba(20,19,17,0.08);
+    border-bottom-left-radius:4px;
+  }
+
+  .row.bot .bubble.thinking{ color:var(--muted); font-style:italic; }
+  .row.bot .bubble.error{ border-color:#b5533e; color:#8a3b28; }
+
+  .quick-replies{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    max-width:88%;
+    margin-top:2px;
+  }
+
+  .chip{
+    background:var(--accent-soft);
+    color:var(--ink);
+    border:1px solid rgba(91,122,99,0.35);
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:13.5px;
+    font-family:inherit;
+    cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  .chip:hover{ background:var(--accent); color:#fff; }
+  .chip:disabled{ opacity:0.4; cursor:not-allowed; }
+  .chip.picked{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+
+  form{
+    display:flex;
+    gap:10px;
+    padding:16px;
+    border-top:1px solid rgba(20,19,17,0.1);
+    background:var(--paper);
+  }
+
+  form.hidden{ display:none; }
+
+  textarea{
+    flex:1;
+    resize:none;
+    border:1px solid rgba(20,19,17,0.18);
+    border-radius:12px;
+    padding:11px 13px;
+    font-family:inherit;
+    font-size:15px;
+    line-height:1.4;
+    background:#fff;
+    color:var(--ink);
+    max-height:120px;
+  }
+
+  textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  button.send{
+    border:none;
+    background:var(--ink);
+    color:var(--paper);
+    padding:0 20px;
+    border-radius:12px;
+    font-family:inherit;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    transition:opacity 0.15s ease;
+  }
+
+  button.send:hover{ opacity:0.85; }
+  button.send:disabled{ opacity:0.4; cursor:not-allowed; }
+
+  #log::-webkit-scrollbar{ width:8px; }
+  #log::-webkit-scrollbar-thumb{ background:rgba(20,19,17,0.15); border-radius:8px; }
+
+  @media (prefers-reduced-motion: no-preference){
+    .bubble, .quick-replies{ animation: rise 0.18s ease; }
+  }
+  @keyframes rise{
+    from{ opacity:0; transform:translateY(4px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+  <div class="app">
+    <header>
+      <div class="eyebrow">Prompt Forge</div>
+      <h1>Asisten Prompt Desain</h1>
+      <div class="status"><span class="dot"></span><span id="statusText">pilih dulu ya</span></div>
+    </header>
+
+    <div id="log"></div>
+
+    <form id="chatForm" class="hidden">
+      <textarea id="input" placeholder="Ketik detail produk/gambarnya..." rows="1" required></textarea>
+      <button type="submit" class="send" id="sendBtn">Kirim</button>
+    </form>
+  </div>
+
+<script>
+  // ====== KONFIGURASI — GANTI INI ======
+  const WEBHOOK_URL = "https://your-n8n-domain.com/webhook/prompt-forge-desain";
+  // ======================================
+
+  const log = document.getElementById("log");
+  const form = document.getElementById("chatForm");
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("sendBtn");
+  const statusText = document.getElementById("statusText");
+
+  function getSessionId(){
+    let id = localStorage.getItem("promptforge_session");
+    if(!id){
+      id = "web-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem("promptforge_session", id);
+    }
+    return id;
+  }
+  const sessionId = getSessionId();
+
+  // ---- state alur ----
+  let flow = {
+    mode: null,      // 'chat' | 'design_prompt'
+    taskType: null,  // 'generate' | 'remove_bg' | 'composite' | 'retouch' | 'lainnya'
+    level: null      // 'smart' | 'legendary' | 'absolute'
+  };
+
+  const TASK_OPTIONS = [
+    { key: "generate",  label: "🖼️ Generate Baru" },
+    { key: "remove_bg", label: "✂️ Remove/Ganti Background" },
+    { key: "composite", label: "🧩 Gabung/Composite Produk" },
+    { key: "retouch",   label: "🪄 Retouch/Upscale" },
+    { key: "lainnya",   label: "❓ Lainnya" }
+  ];
+
+  const LEVEL_OPTIONS = [
+    { key: "smart",     label: "Smart" },
+    { key: "legendary", label: "Legendary" },
+    { key: "absolute",  label: "Absolute" }
+  ];
+
+  function addBubble(text, who, opts){
+    const row = document.createElement("div");
+    row.className = "row " + who;
+    const bubble = document.createElement("div");
+    bubble.className = "bubble" + (opts && opts.className ? " " + opts.className : "");
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+    return bubble;
+  }
+
+  function addQuickReplies(options, onPick){
+    const row = document.createElement("div");
+    row.className = "row bot";
+    const wrap = document.createElement("div");
+    wrap.className = "quick-replies";
+    const buttons = [];
+    options.forEach(opt => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip";
+      btn.textContent = opt.label;
+      btn.addEventListener("click", () => {
+        buttons.forEach(b => b.disabled = true);
+        btn.classList.add("picked");
+        addBubble(opt.label, "user");
+        onPick(opt);
+      });
+      buttons.push(btn);
+      wrap.appendChild(btn);
+    });
+    row.appendChild(wrap);
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function showForm(placeholder){
+    form.classList.remove("hidden");
+    input.placeholder = placeholder || "Ketik pesan...";
+    input.focus();
+  }
+  function hideForm(){
+    form.classList.add("hidden");
+  }
+
+  function startFlow(){
+    flow = { mode: null, taskType: null, level: null };
+    hideForm();
+    statusText.textContent = "pilih dulu ya";
+    addBubble("Mau ngobrol biasa atau bikin prompt desain gambar?", "bot");
+    addQuickReplies(
+      [
+        { key: "chat", label: "💬 Ngobrol" },
+        { key: "design", label: "🎨 Buat Prompt Desain" }
+      ],
+      (opt) => {
+        if(opt.key === "chat"){
+          flow.mode = "chat";
+          statusText.textContent = "mode ngobrol";
+          addBubble("Oke, mau ngobrolin apa?", "bot");
+          showForm("Ketik pesan...");
+        } else {
+          askTaskType();
+        }
+      }
+    );
+  }
+
+  function askTaskType(){
+    statusText.textContent = "pilih jenis tugas";
+    addBubble("Mau bikin prompt buat apa?", "bot");
+    addQuickReplies(TASK_OPTIONS, (opt) => {
+      flow.taskType = opt.key;
+      askLevel();
+    });
+  }
+
+  function askLevel(){
+    statusText.textContent = "pilih level ketajaman";
+    addBubble("Level ketajaman prompt-nya mau yang mana?", "bot");
+    addQuickReplies(LEVEL_OPTIONS, (opt) => {
+      flow.level = opt.key;
+      flow.mode = "design_prompt";
+      statusText.textContent = "siap, ceritain detailnya";
+      addBubble("Oke! Sekarang ceritain detail produk/gambarnya ya (nama produk, warna, bahan, atau apapun yang relevan).", "bot");
+      showForm("cth: botol parfum kaca bening isi cairan emas...");
+    });
+  }
+
+  function autoGrow(){
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 120) + "px";
+  }
+  input.addEventListener("input", autoGrow);
+
+  input.addEventListener("keydown", (e) => {
+    if(e.key === "Enter" && !e.shiftKey){
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const message = input.value.trim();
+    if(!message) return;
+
+    addBubble(message, "user");
+    input.value = "";
+    autoGrow();
+
+    input.disabled = true;
+    sendBtn.disabled = true;
+    statusText.textContent = "memproses...";
+
+    const thinkingBubble = addBubble("...", "bot");
+    thinkingBubble.classList.add("thinking");
+
+    const payload = flow.mode === "design_prompt"
+      ? { sessionId, mode: "design_prompt", taskType: flow.taskType, level: flow.level, message }
+      : { sessionId, mode: "chat", message };
+
+    try{
+      const res = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if(!res.ok){
+        throw new Error("Server merespon dengan status " + res.status);
+      }
+
+      const data = await res.json();
+      const reply =
+        data.reply ??
+        data.output ??
+        data.text ??
+        (typeof data === "string" ? data : null);
+
+      thinkingBubble.classList.remove("thinking");
+      thinkingBubble.textContent = reply || "Maaf, aku tidak dapat balasan yang jelas dari server.";
+
+      if(flow.mode === "design_prompt"){
+        // habis prompt jadi, tawarkan lagi biar rapi & bisa lanjut
+        addQuickReplies(
+          [
+            { key: "again_same", label: "🔁 Buat lagi (task sama)" },
+            { key: "again_new", label: "🎨 Task baru" },
+            { key: "chat", label: "💬 Ngobrol" }
+          ],
+          (opt) => {
+            if(opt.key === "again_same"){
+              statusText.textContent = "siap, ceritain detailnya";
+              addBubble("Oke, ceritain lagi detailnya.", "bot");
+              showForm("cth: botol parfum kaca bening isi cairan emas...");
+            } else if(opt.key === "again_new"){
+              askTaskType();
+            } else {
+              flow.mode = "chat";
+              statusText.textContent = "mode ngobrol";
+              addBubble("Oke, mau ngobrolin apa?", "bot");
+              showForm("Ketik pesan...");
+            }
+          }
+        );
+      }
+
+    }catch(err){
+      thinkingBubble.classList.remove("thinking");
+      thinkingBubble.classList.add("error");
+      thinkingBubble.textContent = "Gagal terhubung ke server. Coba lagi sebentar lagi.";
+      console.error(err);
+    }finally{
+      input.disabled = false;
+      sendBtn.disabled = false;
+      if(flow.mode === "chat") statusText.textContent = "mode ngobrol";
+      input.focus();
+    }
+  });
+
+  startFlow();
+</script>
+
+</body>
+</html>
